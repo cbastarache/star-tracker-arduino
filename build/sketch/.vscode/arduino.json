@@ -1,0 +1,7 @@
+#line 1 "C:\\Users\\corey\\Documents\\star-tracker\\.vscode\\arduino.json"
+{
+    "sketch": "star-tracker.ino",
+    "output": "build",
+    "board": "arduino:avr:uno",
+    "port": "COM3"
+}
