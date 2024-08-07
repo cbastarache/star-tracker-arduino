@@ -10,7 +10,7 @@ int numberOfSteps = 3202; // 1.8 deg steps, 1/16th step
 Axis bearing = Axis(numberOfSteps, BEARING_GR, 2, 5);
 Axis azimuth = Axis(numberOfSteps, AZIMUTH_GR, 3, 6);
 
-Controller controller = Controller(&bearing, &azimuth);
+Controller controller = Controller(&bearing, &azimuth, enablePin);
 
 int printStep = 0;
 
@@ -31,23 +31,19 @@ void doPrints(){
 void setup() { 
 
   Serial.begin(9600);
-  Serial.println("Starting StepperTest");
 
-  pinMode(enablePin, OUTPUT);
-  digitalWrite(enablePin, HIGH);
-  delay(1000);
+  delay(3000);
 
   bearing.setLimits(0, 360, 10000, 5000, true);
   azimuth.setLimits(-90, 90, 10000, 5000, false);
   
-  delay(1000);
-  digitalWrite(enablePin, LOW);
+  delay(2000);
 
 }
 
 void loop() {
 
   controller.run();
-  doPrints();
+  // doPrints();
 
 }
