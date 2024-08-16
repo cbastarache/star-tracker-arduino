@@ -3,6 +3,8 @@
 
 #include "axis.h"
 #include "command.h"
+#include "svector.h"
+#include "star_follower.h"
 
 #define CMD_LENGTH 20
 
@@ -13,7 +15,8 @@ public:
         STOPPED,
         HOMING,
         MOVE_TO,
-        MOVE_SPEED
+        MOVE_SPEED,
+        FIX
     };
 
     enum Mode {
@@ -25,13 +28,19 @@ public:
         bearing = be;
         azimuth = az;
         bearingTarget = 0;
-        azimuthTarget = 0;    
+        azimuthTarget = 0;   
+        bearingSpeed = 0;
+        azimuthSpeed = 0; 
         enablePin = n_enablePin;
+
+        starFollower = StarFollower();
 
         state = STOPPED;
         pinMode(enablePin, OUTPUT); 
         enabled = true;
         setEnable(false);
+
+        testMove();
     }
 
     void run() {
@@ -44,9 +53,19 @@ public:
                 break;
             case MOVE_TO:
                 setEnable(true);
-                setTargets();
-                bearing->run();
-                azimuth->run();
+                bearing->driveToPos(bearingTarget);
+                azimuth->driveToPos(azimuthTarget);
+                break;
+            case MOVE_SPEED:
+                setEnable(true);
+                bearing->driveSpeed(bearingSpeed);
+                azimuth->driveSpeed(azimuthSpeed);
+                break;
+            case FIX:
+                setEnable(true);
+                starFollower.run(bearingTarget, azimuthTarget);
+                bearing->driveToPos(bearingTarget);
+                azimuth->driveToPos(azimuthTarget);
                 break;
             default:
                 break;
@@ -64,11 +83,18 @@ public:
         Serial.print(msg[0]);
     }
 
+    void testMove() {
+        starFollower.setPole(0, 45);
+        state = FIX;
+        starFollower.initialize(0, 40);
+    }
+
 private:
     Controller() {}
 
     Axis *azimuth, *bearing;
     double bearingTarget, azimuthTarget;
+    double bearingSpeed, azimuthSpeed;
 
     byte enablePin;
     bool enabled;
@@ -79,9 +105,10 @@ private:
     State state;
     Mode mode;
 
+    StarFollower starFollower;
+
     void setTargets() {
-        bearing->driveToPos(bearingTarget);
-        azimuth->driveToPos(azimuthTarget);
+        
     }
 
     void setEnable(bool en){
@@ -128,6 +155,22 @@ private:
             else if (msg[0] == "FIX"){
                 handle_fix();
             }
+            else if (msg[0] == "SET_POLE"){
+                handle_set_pole();
+            }
+            else if (msg[0] == "SPEED"){
+                handle_speed();
+            }
+            else if (msg[0] == "JOG"){
+                handle_jog();
+            }
+            else if (msg[0] == "POS"){
+                char out_msg[30], cBe[7], cAz[7];
+                dtostrf(bearing->getPos(), 6, 2, cBe);
+                dtostrf(azimuth->getPos(), 6, 2, cAz);
+                sprintf(out_msg,"{\"Be\":%s,\"Az\":%s}", cBe, cAz);
+                Serial.print(out_msg);
+            }
 
             newMsg = false;
         }
@@ -144,6 +187,17 @@ private:
         azimuthTarget = msg[2].toDouble();
     }
 
+    void handle_speed(){
+        //Format: SPEED,bearing,azimuth
+        // 0: SPEED
+        // 1: bearing, double for angular speed
+        // 2: azimuth, double for angular speed
+
+        state = MOVE_SPEED;
+        bearingSpeed = msg[1].toDouble();
+        azimuthSpeed = msg[2].toDouble();
+    }
+
     void handle_stop(){
         //Format: STOP
         // 0: STOP
@@ -152,33 +206,39 @@ private:
     }
 
     void handle_track(){
+        
+    }
 
+    void handle_set_pole(){
+        starFollower.setPole(bearing->getPos(), azimuth->getPos());
+
+        Serial.print("Pole set at ");
+        Serial.print(bearing->getPos());
+        Serial.print(", ");
+        Serial.println(azimuth->getPos());
     }
 
     void handle_fix(){
-
+        state = FIX;
+        starFollower.initialize(bearing->getPos(), azimuth->getPos());
     }
 
-    void testMove() {
-        if(bearing->getError() == 0){
-            if (bearingTarget == 90){
-                bearingTarget = 270;
-            }
-            else {
-                bearingTarget = 90;
-            }
-        }
+    void handle_jog(){
+        double be_inc = msg[1].toDouble();
+        double az_inc = msg[2].toDouble();
 
-        if(azimuth->getError() == 0){
-            if (azimuthTarget == 45){
-                azimuthTarget = -45;
-            }
-            else {
-                azimuthTarget = 45;
-            }
+        switch (state){
+        case FIX:
+            starFollower.initialize(bearing->getPos() + be_inc, azimuth->getPos() + az_inc);
+            break;
+        default:
+            bearingTarget += be_inc;
+            azimuthTarget += az_inc;
+            break;
         }
-
     }
+
+    
 };
 
 #endif

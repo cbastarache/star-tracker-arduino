@@ -47,24 +47,33 @@ public:
             distance = (pos - position);
         }
 
-        // Direction d = getDir(pos - position);
         int steps = distance / stepSize;
-
         stepper.moveTo(stepper.currentPosition() + steps);
-    }
+        stepper.run();
 
-    void driveSpeed(float s){
-        stepper.setSpeed(s);
-        stepper.runSpeed();
-    }
-
-    void run() { 
-        stepper.run(); 
         position = stepper.currentPosition() * stepSize;
         
         if(continuous){
             normalize(position);
         }
+    }
+
+    void driveSpeed(double deg_s){
+        double step_s = deg_s / stepSize; // deg/sec * step/deg = step/sec
+
+        position = stepper.currentPosition() * stepSize;
+
+        if (!continuous){
+            if (position <= maxLimit && position >= minLimit ){
+                stepper.setSpeed(step_s);
+            } else {
+                stepper.setSpeed(0.0);
+            }
+        } else {
+            stepper.setSpeed(step_s);
+        }
+        
+        stepper.runSpeed();
     }
 
     void home() {
@@ -92,7 +101,6 @@ private:
     bool continuous = false; 
     bool configured = false;
 
-    int speed = 2;
     double position = 0.f;
     AccelStepper stepper;
 

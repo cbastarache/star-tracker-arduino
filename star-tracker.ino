@@ -35,9 +35,11 @@ void setup() {
   delay(3000);
 
   bearing.setLimits(0, 360, 10000, 5000, true);
-  azimuth.setLimits(-90, 90, 10000, 5000, false);
+  azimuth.setLimits(-70, 70, 10000, 5000, false);
   
   delay(2000);
+
+  controller.testMove();
 
 }
 

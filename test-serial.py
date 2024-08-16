@@ -15,13 +15,13 @@ time.sleep(0.5)
 while (looping):
     out_msg = input(">> ")
     ser.write(out_msg.encode())
-    time.sleep(1)
+    time.sleep(0.1)
 
     msg = b''
     while ser.in_waiting > 0:
         msg += ser.read(1)
 
     print(str(msg))
-    time.sleep(1)
+    time.sleep(0.1)
 
 ser.close()
