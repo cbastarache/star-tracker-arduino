@@ -84,9 +84,9 @@ public:
     }
 
     void testMove() {
-        starFollower.setPole(0, 45);
+        starFollower.setPole(0, 40, true);
         state = FIX;
-        starFollower.initialize(0, 40);
+        starFollower.initialize(50, 25);
     }
 
 private:
@@ -210,12 +210,16 @@ private:
     }
 
     void handle_set_pole(){
-        starFollower.setPole(bearing->getPos(), azimuth->getPos());
+        bool inverted;
+        if(msg[1] == "S") inverted = false;
+        else inverted = true;
 
-        Serial.print("Pole set at ");
-        Serial.print(bearing->getPos());
-        Serial.print(", ");
-        Serial.println(azimuth->getPos());
+        starFollower.setPole(bearing->getPos(), azimuth->getPos(), inverted);
+
+        // Serial.print("Pole set at ");
+        // Serial.print(bearing->getPos());
+        // Serial.print(", ");
+        // Serial.println(azimuth->getPos());
     }
 
     void handle_fix(){

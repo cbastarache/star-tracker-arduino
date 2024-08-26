@@ -38,6 +38,12 @@ class Vector{
             z = z / mag;
         }
 
+        void cross(Vector a, Vector b) {
+            x =    a.Y()*b.Z() - ( b.Y()*a.Z() );
+            y = -( a.X()*b.Z() - ( b.X()*a.Z() ) );
+            z =    a.X()*b.Y() - ( b.X()*a.Y() );
+        }
+
         double X() {return x; }
         double Y() {return y; }
         double Z() {return z; }
