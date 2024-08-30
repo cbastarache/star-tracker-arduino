@@ -2,11 +2,12 @@
 #define __CONTROLLER__H
 
 #include "axis.h"
-#include "command.h"
 #include "svector.h"
 #include "star_follower.h"
 
 #define CMD_LENGTH 20
+#define DELIMITER ','
+#define EOL '\n'
 
 class Controller {
 
@@ -16,7 +17,8 @@ public:
         HOMING,
         MOVE_TO,
         MOVE_SPEED,
-        FIX
+        FIX,
+        TRACK
     };
 
     enum Mode {
@@ -40,7 +42,7 @@ public:
         enabled = true;
         setEnable(false);
 
-        testMove();
+        // testMove();
     }
 
     void run() {
@@ -66,6 +68,21 @@ public:
                 starFollower.run(bearingTarget, azimuthTarget);
                 bearing->driveToPos(bearingTarget);
                 azimuth->driveToPos(azimuthTarget);
+            case TRACK:
+                setEnable(true);
+
+                if( abs(bearing->getPos() - bearingTarget) < 0.3 ){
+                    bearing->driveSpeed(bearingSpeed);
+                } else {
+                    bearing->driveToPos(bearingTarget);
+                }
+
+                if( abs(azimuth->getPos() - azimuthTarget) < 0.3 ){
+                    azimuth->driveSpeed(azimuthSpeed);
+                } else {
+                    azimuth->driveToPos(azimuthTarget);
+                }
+
                 break;
             default:
                 break;
@@ -99,17 +116,15 @@ private:
     byte enablePin;
     bool enabled;
 
+    String tmp_msg[CMD_LENGTH];
     String msg[CMD_LENGTH];
     bool newMsg = false;
+    int msg_index = 0;
 
     State state;
     Mode mode;
 
     StarFollower starFollower;
-
-    void setTargets() {
-        
-    }
 
     void setEnable(bool en){
         if (en != enabled){
@@ -119,27 +134,28 @@ private:
     }
 
     void parseCommand(){
-        String tmp[CMD_LENGTH];
-        char delimiter = ',';
-        int index = 0;
         char read_char;
         
         if (Serial.available()) {
-            delay(50);
             while( Serial.available() ) { 
                 read_char = (char)Serial.read();
-                if(read_char == delimiter){
-                    index ++;
-                } else {
-                    tmp[index] += read_char;
+                if(read_char == DELIMITER){
+
+                    msg_index ++;
+
+                } else if (read_char == EOL) {
+
+                    for (int i = 0; i < CMD_LENGTH; i++){
+                        msg[i] = tmp_msg[i]; 
+                        tmp_msg[i] = "";
+                    }
+                    newMsg = true;
+                    msg_index = 0;
+                } 
+                else {
+                    tmp_msg[msg_index] += read_char;
                 }
             }
-
-            for ( int i = 0; i < CMD_LENGTH; i++){
-                msg[i] = tmp[i]; 
-            }
-
-            newMsg = true;
         }
 
         if (newMsg){
@@ -163,6 +179,12 @@ private:
             }
             else if (msg[0] == "JOG"){
                 handle_jog();
+            }
+            else if (msg[0] == "ZERO"){
+                handle_zero();
+            }
+            else if (msg[0] == "STREAM"){
+                handle_stream();
             }
             else if (msg[0] == "POS"){
                 char out_msg[30], cBe[7], cAz[7];
@@ -209,6 +231,38 @@ private:
         
     }
 
+    void handle_zero(){
+
+        if (msg[1] == "BE"){
+            bearing->setPos(0);
+        } else if (msg[1] == "AZ") {
+            azimuth->setPos(0);
+        }
+
+    }
+
+    void handle_stream(){
+        // Move between two positions, interpolating speed to make the move
+        //Format: STREAM,bearing1,azimuth1,bearing2,azimuth2,time
+        // 0: STREAM
+        // 1: bearing1, double for angular position
+        // 2: azimuth1, double for angular position
+        // 3: bearing2, double for angular position
+        // 4: azimuth2, double for angular position
+        // 5: time (s), double time delta for the move
+        bearingTarget = msg[1].toDouble();
+        azimuthTarget = msg[2].toDouble();
+        bearingSpeed = (msg[3].toDouble() - msg[1].toDouble()) / msg[5].toDouble();
+        azimuthSpeed = (msg[4].toDouble() - msg[2].toDouble()) / msg[5].toDouble();
+        state = TRACK;
+
+        // Serial.println("stream calcs-----");
+        // Serial.println(bearingTarget);
+        // Serial.println(azimuthTarget);
+        // Serial.println(bearingSpeed);
+        // Serial.println(azimuthSpeed);
+    }
+
     void handle_set_pole(){
         bool inverted;
         if(msg[1] == "S") inverted = false;
@@ -242,7 +296,6 @@ private:
         }
     }
 
-    
 };
 
 #endif

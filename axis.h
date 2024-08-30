@@ -77,7 +77,14 @@ public:
     }
 
     void home() {
+        setPos(0);
+    }
 
+    void setPos(double pos){
+        if (continuous) {
+            normalize(pos);
+        }
+        stepper.setCurrentPosition(pos / stepSize);
     }
 
     double getError() { return abs(stepper.distanceToGo()) * stepSize; }

@@ -39,8 +39,6 @@ void setup() {
   
   delay(2000);
 
-  controller.testMove();
-
 }
 
 void loop() {
