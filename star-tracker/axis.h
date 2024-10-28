@@ -96,6 +96,7 @@ public:
 
     double getError() { return abs(stepper.distanceToGo()) * stepSize; }
     double getPos() { return position - offset; }
+    long getRawPos() { return stepper.currentPosition(); }
     AccelStepper* getStepper() { return &stepper; }
 
     void doPrints() {

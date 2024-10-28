@@ -69,6 +69,7 @@ public:
                 starFollower.run(bearingTarget, azimuthTarget);
                 bearing->driveToPos(bearingTarget);
                 azimuth->driveToPos(azimuthTarget);
+                break;
             case TRACK:
                 setEnable(true);
 
