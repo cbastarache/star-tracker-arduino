@@ -36,6 +36,9 @@ public:
     void driveToPos(double pos){
         double distance;
         double tmp;
+        long steps;
+
+        pos += offset;
 
         if (continuous) {
             normalize(pos);
@@ -47,7 +50,7 @@ public:
             distance = (pos - position);
         }
 
-        int steps = distance / stepSize;
+        steps = distance / stepSize;
         stepper.moveTo(stepper.currentPosition() + steps);
         stepper.run();
 
@@ -87,8 +90,12 @@ public:
         stepper.setCurrentPosition(pos / stepSize);
     }
 
+    void applyOffset(double n_offset){
+        offset = n_offset;
+    }
+
     double getError() { return abs(stepper.distanceToGo()) * stepSize; }
-    double getPos() { return position; }
+    double getPos() { return position - offset; }
     AccelStepper* getStepper() { return &stepper; }
 
     void doPrints() {
@@ -109,6 +116,7 @@ private:
     bool configured = false;
 
     double position = 0.f;
+    double offset = 0.f;
     AccelStepper stepper;
 
     int signOf(double x) {

@@ -4,7 +4,7 @@
 class Utils {
     
 public:
-    static const double pi = 3.141592653589793;
+    static constexpr double pi = 3.141592653589793;
     static double rad2deg(double x) { return x * 180.0 / pi; }
     static double deg2rad(double x) { return x * pi / 180.0; }
     static void comp2sphere(double x, double y, double z, double &be, double &az) {

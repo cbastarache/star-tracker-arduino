@@ -34,6 +34,7 @@ public:
         bearingSpeed = 0;
         azimuthSpeed = 0; 
         enablePin = n_enablePin;
+        mode = PARALLEL;
 
         starFollower = StarFollower();
 
@@ -71,16 +72,18 @@ public:
             case TRACK:
                 setEnable(true);
 
-                if( abs(bearing->getPos() - bearingTarget) < 0.3 ){
+                if( checklimits(bearing->getPos(), be1, be2, true) ){
                     bearing->driveSpeed(bearingSpeed);
                 } else {
-                    bearing->driveToPos(bearingTarget);
+                    // bearing->driveToPos(closerLimit(bearing->getPos(), be1, be2, true));
+                    bearing->driveToPos(be2);
                 }
 
-                if( abs(azimuth->getPos() - azimuthTarget) < 0.3 ){
+                if( checklimits(azimuth->getPos(), az1, az2, false) ){
                     azimuth->driveSpeed(azimuthSpeed);
                 } else {
-                    azimuth->driveToPos(azimuthTarget);
+                    // azimuth->driveToPos(closerLimit(azimuth->getPos(), az1, az2, false));
+                    azimuth->driveToPos(az2);
                 }
 
                 break;
@@ -113,6 +116,10 @@ private:
     double bearingTarget, azimuthTarget;
     double bearingSpeed, azimuthSpeed;
 
+    //stream variables
+    double be1, be2, az1, az2;
+    double streamRate;
+
     byte enablePin;
     bool enabled;
 
@@ -131,6 +138,33 @@ private:
             digitalWrite(enablePin, enabled);
             enabled = en;
         }
+    }
+
+    bool checklimits(double x, double l1, double l2, bool continuous){
+        if (continuous){
+            if ( abs(l2 - l1) > 180 ){
+                return x < min(l1, l2) || x > max(l1,l2);
+            }
+        } 
+        
+        return x > min(l1, l2) && x < max(l1, l2) ;
+    }
+
+    double closerLimit(double pos, double l1, double l2, bool continuous){
+        double d1, d2, tmp;
+
+        if (continuous){
+            tmp = l1 - pos + 540;
+            d1 = ( (int)tmp % 360 - 180) + (tmp - (int)tmp);
+
+            tmp = l2 - pos + 540;
+            d2 = ( (int)tmp % 360 - 180) + (tmp - (int)tmp);
+        } else {
+            d1 = l1 - pos;
+            d2 = l2 - pos;
+        }
+
+        return d1 < d2 ? l1 : l2;
     }
 
     void parseCommand(){
@@ -193,6 +227,20 @@ private:
                 sprintf(out_msg,"{\"Be\":%s,\"Az\":%s}", cBe, cAz);
                 Serial.print(out_msg);
             }
+            else if (msg[0] == "MODE"){
+                int tmp = msg[1].toInt();
+                switch (tmp)
+                {
+                case 0:
+                    mode = PARALLEL;
+                    azimuth->applyOffset(0);
+                    break;
+                default:
+                    mode = PERPENDICULAR;
+                    azimuth->applyOffset(-90);
+                    break;
+                }
+            }
 
             newMsg = false;
         }
@@ -250,10 +298,20 @@ private:
         // 3: bearing2, double for angular position
         // 4: azimuth2, double for angular position
         // 5: time (s), double time delta for the move
-        bearingTarget = msg[1].toDouble();
-        azimuthTarget = msg[2].toDouble();
-        bearingSpeed = (msg[3].toDouble() - msg[1].toDouble()) / msg[5].toDouble();
-        azimuthSpeed = (msg[4].toDouble() - msg[2].toDouble()) / msg[5].toDouble();
+        be1 = msg[1].toDouble();
+        az1 = msg[2].toDouble();
+        be2 = msg[3].toDouble();
+        az2 = msg[4].toDouble();
+        streamRate = msg[5].toDouble();
+
+        bearingTarget = be1;
+        azimuthTarget = az1;
+
+        double tmp = be2 - be1 + 540;
+        double distance = ( (int)tmp % 360 - 180) + (tmp - (int)tmp);
+        bearingSpeed = (distance) / streamRate;
+
+        azimuthSpeed = (az2 - az1) / streamRate;
         state = TRACK;
 
         // Serial.println("stream calcs-----");
